@@ -106,4 +106,99 @@ pwpp(em3)
 
 
 
+##########################################################
+# COMPARISON DES MOYENNES
+
+install.packages("dplyr")
+library(dplyr)
+library(ggplot2)
+
+# telecharger donnée
+ortho <- read.csv2("masses_orthos.csv")
+# visualization de 10 ligne au hazard
+ortho %>%
+  sample_n(size = 10)
+
+#### les femelles de l'esp 1 ont-elle la meme masse que celle de l'esp 2 ??
+# deux espèces, un site d'étude, que les femelles
+
+# filtering the data we are interested in
+d1 <- ortho %>%
+  filter(sp%in%c("Gom_vag", "Euc_dec"), lieu=="Yenne", sex=="Female")
+d1
+
+# visualizer boxplot avec mass des  femelelles de 2 espèces
+(bxp1 <- ggplot(d1, aes(y=mass, x=sp)) +
+    geom_boxplot() +
+    labs(x="Species", y="Mass (mg)") +
+    theme_light() 
+  )
+
+# creating a data frame with the two spp and the corresponding mean
+(s1 <- d1 %>%
+    group_by(sp) %>%
+    summarize(Moyenne=mean(mass))
+  )
+
+# calcule de la defference entre les moyennes
+s1[1,2]-s1[2,2] # en absolu
+(s1[1,2]-s1[2,2])/s1[1,2] # En pourcentage (combien l'espece 1 est plus grande en respect de la 2)
+# espèce 1 est 4.9% plus grande que l’espèce 2
+
+# cette différence est-elle suffisamment importante, compte-tenu de la variabilité à l’intérieur de chaque espèce ??
+# on peut se faire une idée visuelle en regardant le boxplot bxp1
+
+# table 2x2 with coefficent of variation for each spp
+# coefficient of variation = CV = standar deviation (sd) / mean
+d1 %>%
+  group_by(sp) %>%
+  summarize(CV=sd(mass)/mean(mass))
+# Les deux coefficients de variation sont très proches, environ 21%
+# ce qui est grand par rapport à l’écart des moyennes de 5%
+
+# quelle est la probabilité d’obtenir par hasard une différence de 5% ??
+# hypothèse nulle H0 : "Les deux espèces ont la même masse"
+# Yik = μi + Eik
+# μi sont les vraies moyennes des deux espèces
+# H0 : μ1 = μ2
+# Eik sont des variables aléatoire indépendantes et identiquement distribuées selon Eik ∼ N (0, σ2)
+
+# Cela reflète les trois hypothèses du modèle:
+#  1. Les résidus sont indépendants les uns des autres (hypothèse d’indépendance)
+#  2. Ils suivent une distribution normale (hypothèse de normalité) 
+#  3. Ils ont la même variance (hypothèse d’homoscédasticité)
+
+# verification de l'hp 3 avec le test de Bartlett
+bartlett.test(mass~sp, data = d1)
+?bartlett.test
+# Bartlett Test of Homogeneity of Variances
+# Performs Bartlett's test of the null that the variances in each of the groups (samples) are the same
+# we reject H0 if p-value < 0.05 --> not ythe case, p-value very high (0.847) -> cannot reject H0 that the variances are the same
+
+## estimation du modéle lineaire
+m1 <- lm(data = d1, log(mass)~sp)
+m1
+
+# check the normal ditribution of the residues (hp 2 de normalitè)
+# visually
+hist(resid(m1), main = "")
+# with shapiro-wilk normality test
+shapiro.test(resid(m1))
+# The null hypothesis is that the data distribution is normal.
+# The p-value is not significant, so the data are normally distributed.
+
+# tester H0 par une analyse de variance appliquée au modéle
+anova(m1)
+# Pr(>F) = 0.4783
+# il y a 48% de chances pour que la différence de moyenne de 3.375 (ou plus) entre les deux espèces soit dûe au hasard
+# risque de faux positif étant très grand
+# nous décidons de ne pas rejeter H0
+
+# Nous n’avons pas détecté de différence de poids entre les femelles de Euchorthippus declivus et Gomphocerrippus vagans 
+# (ANOVA, F1,37 = 0.55, p=0.46).
+
+
+
+
+
 
