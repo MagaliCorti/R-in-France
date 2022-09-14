@@ -173,12 +173,117 @@ chisq.test(table(mpg$class, mpg$year))
 
 
 
+##########################################################################################
+# Applied Statistics in R Part 2
+
+
+library(ggplot2)
+
+# create a dataframe for car classes by years
+car_classes <- data.frame(table(mpg$class, mpg$year))
+# rename the columns
+colnames(car_classes) <- c("class", "year", "numbercars")
+# create a ggplot
+ggplot(car_classes, aes(class, numbercars)) + 
+  geom_bar(stat="identity") +
+  facet_grid(~year) # overlayng facet grid with 2 different year
+
+# rare occorences can coause strange behaviors
+
+# non-parametric version of Chi-square is Kolmogorov-Smirnov aka ks test
+car_table <- table(mpg$class, mpg$year)
+ks.test(car_table[,1],  car_table[,2])
+# D = test statistics, scale from 0 to 1, D=0.14286, pretty low
+# p-value = 1 prob to find  value greater than D is pretty high
+# cars in 1999 fromn a stat point of view same than 2008
+# they come  from the same  distribution
+
+
+### test of differences in cty among drivetypes
+ggplot(mpg, aes(drv, cty)) +
+  geom_boxplot()
+
+# test we  might want to use with anova
+# anova = analysis of variance, looks for variation within each grops and among differnt groups
+
+# different type visualization, more intuitive
+ggplot(mpg, aes(drv, cty)) +
+  geom_violin()
+# simmetrical distribution of frequencies
+# how data are distributed with respect to a continues variable (cty)
+
+# assumptions that would go into an anova type test
+# considering if there  are signif diff among 4 f and r for city fuel economy
+# anova = parametric tool to compare means for more than two groups
+# having two mean we use a t-test
+
+
+# anova have assumption of normality
+
+# test for normal distribution of the response variable using shapiro test
+shapiro.test(mpg$cty)
+# p-value signif = distrib is skewed, differ signif from normal distrib
+
+# test for homogeneity of variances (homoschedasticity)
+install.packages("car")
+library(car) # companienion to applyied regression
+leveneTest(cty~drv, data=mpg)
+# p-value  very high, we meet assumption of homogeinity of variances
+
+# just for comparison, let's run an ANOVA
+t1 <- oneway.test(cty~drv, data = mpg, var.equal = T)
+# check if two ore more samples from the normal distribution have the same mean
+# it does not necesserly need to be equal
+# if you violate the assumption of unequal variances you could still run an anova using oneway.test and putting var.equal = F
+# that means that  if the levene test comes out significat, you've got unequal variances, you can use the type 3 sums of squares instead of the type one sums of squares and still run an anova
+t1
+# one way analysis of means = one way analysis of variances = one way anova
+# F (test) statistics
+# p-value very small, signif, we have a difference
+
+# second way to do an anova
+t2 <- aov(cty~drv, data = mpg)
+summary(t2) # when use aov function you must use smmary
+# very similar to oneway.test
+# same conclusions: there are diff at least bw two gr but we don't know which are diff from each other
+# we must use post-hoc  testing or  paiwise differences
+
+# we can use a t-test to comapre two gr if we have normally  distributed data
+
+# determine pairwise differeces
+TukeyHSD(t2)
+# run tukey test to see which gr are signif diff
+# comp f vs 4 -> diff 5.64, p-value adj signif -> real difference
+# comp r vs 4 -> diff -1.92, p-value adj very high notsignif -> no difference
+# comp r vs f -> diff -5.89, p-value adj signif -> real difference
+
+# alternative pairwise  method
+attach(mpg)
+pairwise.t.test(cty, drv ,p.adjust.method = "bonf") # Bonferroni method
+# comparing 4 to  f p-value signif
+# comparing 4 to  r p-value not signif
+# comparing f to  r p-value signif
+detach()
+
+
+### non-parametric comparison of more than two means
+# to dhis you use Kruskal-Wallis
+kruskal.test(cty~drv, data = mpg)
+# p-value equal to conclusion of anova but kruskal is a more appropriate test
+
+# non-parametric post-hoc  test or pairwise  comparison
+install.packages("FSA")
+library(FSA)
+dunnTest(cty~drv, data = mpg, method = "bh") # Benjamini-Hochberg method
+# adj p-value in  first case 6.9e-24 (6.9 to the negative 24 very signif)
+# second p-value 7.119264e-01 = 0.7119 not signif
+# tird p.adj = 2.962794e-11 signif
+# same conclusion
 
 
 
 
-
-
+##########################################################################################
 # 'vegan' Package Lecture
 
 # Loading vegan library
