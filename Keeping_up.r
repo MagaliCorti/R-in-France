@@ -1,6 +1,184 @@
 # KEEP UP WITH R!!
 
 
+
+##########################################################################################
+# Introduction to Coding in R Part 2
+
+
+# install.packages("EBImage")
+# library(EBImage)
+# img = readImage("path/to/your/image/file or URL")
+# display(img, method = "raster")
+
+library(raster)
+help <- raster("screen/help.png")
+plot(help)
+
+
+###### Question 8: how to handle missing data
+
+incomplete <- c(1, 2, 3, 4, 5, 6, NA, 8, 9, 10)
+incomplete
+max(incomplete)
+max(incomplete, na.rm = T)
+
+# use na.rm = T to remove missing values
+
+
+###### Question 10: how to code dates and time
+
+?strptime
+# function that transform numbers in character dates
+class_time <- strptime(c("20210209113000", 
+                         "20210209124500"),
+                       format = "%Y%m%d%H%M%S")
+class_time
+
+
+
+##########################################################################################
+# Data Management in R
+
+
+# starting with excel and then convert it in .csv format so that we can use it in R
+# create a file excel and save it as .csv -> replace it, problems of tabs, record only the active one
+
+# setting working directory faster: Session -> Chose working directory
+# copy-paste code appeared in the console
+
+# read.csv authomatic in R no packages needed
+# header = T recognise first line as header
+
+# merging fishes and  date of collection in sites 
+# function merge: fishes_site <- merge(fishes, sites, by="site" )
+# when merging doesn't repeat site but just add the time column
+
+
+
+##########################################################################################
+# R for Data Science Lecture
+
+
+# saving file as cdv or txt is the best thing to do
+# useful package containing many other packages: tidyverse
+install.packages("tidyverse")
+library(tidyverse)
+
+# read.csv
+# read.table
+# read.delim
+# write.csv
+# write.table
+
+import <- raster("screen/import.png")
+plot(import)
+
+import_comp <- raster("screen/import_comparison.png")
+plot(import_comp)
+
+# observation lines
+# variable columns
+# values cells
+
+
+
+##########################################################################################
+# Applied Statistics in R Part 1
+
+
+############ applied statistics terms
+
+# parametric -  assuming idea of normality in the distribution (student t-test, anova analysis of variance)
+# vs
+# non-parametric - non normal distribution, skewed distribution, more frequent
+
+# independence - describe situa in which obs are not related to each other, on obs convey no info about the next
+# independent variables - predictor variable or x-variables representing the experimental variable that is being manibulated in a manipulative study or observed across gradients to asses their effect
+# dependent variable - response variable or y-variable
+
+# binomial data -- data that can be class into two discrete categories
+
+# homoscedasticity - homogeneity of variances
+
+# replication - increase sample size, influence inferences (pseudoreplication when replication are not independent)
+
+# nesting - some prdictor variables or observation of the response variable can be broken down into finer groups within groups (hyerarchy)
+
+# mixed effect models - mixed models - used to account for non-independence among observation  by including random effects taht capture the relationship among observations and fixed effects that pertain to the hypotesis being tested
+# generalized linear models - models  fit to data to that do not meet the assumption of normal distribution
+# non normal distribution - binomial (two outcome only) vs Poisson (only non negative, mean and variance are equal) vs negative binomial vs zero inflated Poisson
+# additive models - model in which we do not have a linear or curvy relationship, very dynamic relations
+
+
+############ testing for differences versus relationships
+
+
+##### tests of differences
+
+# see screenshots 
+
+##### tests of relationships
+
+# see screenshots
+
+
+############ working in R
+
+library(ggplot2)
+data(mpg)
+
+# plotting histogram of city fuel economy (cty)
+hist(mpg$cty)
+ggplot(mpg, aes(cty))  + geom_bar()
+
+# test if distrib is normal with shapiro-wilking test
+shapiro.test(mpg$cty)
+# W = test  statistics
+# p-value = very low -> data differ signif from a normal distrib
+#data are not normally distributed
+
+# try to make the data more near to a normal  distrib
+hist(log(mpg$cty))
+shapiro.test(log(mpg$cty))
+# p-value is greater, closerto the ass of normal distrib, can use parametric test (even if best use non parametric)
+
+# test kurtosis (test if sample normally distributed)
+install.packages("moments")
+library(moments)
+anscombe.test(mpg$cty) # test if we have a normal distrib
+# kurtosis value of three = 3 =  normal distrib (mesokortic)
+# value < 3 (platykutic)
+# value > 3 (leptokurtic) -> peak higher than normal, tail lower than normal
+
+# test for skeweness 
+agostino.test(mpg$cty)
+# skew value = positive
+# p-value very low -> reject h0 -> data  are positively or right skewd
+
+
+######### goodness of fit test
+
+### chi-square test
+
+# test for diff in the number of cars in each class bw 1999 and 2008
+table(mpg$class, mpg$year)
+# is there a diff in class of cars produced in the two years ? is  there a preference or dependence ?
+# do  the obs data match with the expected data ?
+chisq.test(table(mpg$class, mpg$year))
+# looking at the diff in the two distrib
+# X-square = around 1 -> on avarage 1 value of difference in the distribution on the number  of cars
+# p-value very high -> probability of finding a value as extreme  or more extreme of the chi-square value
+# distribution did not differ bw the two years
+
+
+
+
+
+
+
+
+
 # 'vegan' Package Lecture
 
 # Loading vegan library
