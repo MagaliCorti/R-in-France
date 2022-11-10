@@ -583,8 +583,137 @@ plot(pro)
 
 
 
+################################## 6 Classification ##################################
+
+# vegan not most powerfull for classification analysis
+
+# labdsv package on contrary particularly strong for classification functions
 
 
+################# 6.1 Cluster analysis  #################
+
+# Hierarchic clustering using function hclust()
+# needs a  dissimilarities as inputs
+
+# Dissimilarity Matrix:
+# The dissimilarity matrix (also called distance matrix) describes pairwise distinction between M objects. 
+# It is a square symmetrical MxM matrix with the (ij)th element equal to the value of a chosen measure of distinction between the (i)th and the (j)th object. 
+# The diagonal elements are either not considered or are usually equal to zero - i.e. the distinction between an object and itself is postulated as zero.
+
+# alternative clustering strategies by hclust() :
+
+# a. single linkage -> nearest neighbour
+dis <- vegdist(dune)
+clus <- hclust(dis, "single")
+clus
+plot(clus)
+# single linkage is prone to chain data so that single sites are joined to large clusters
+
+# b. complete linkage -> furthest neighbour
+cluc <- hclust(dis, "complete")
+cluc
+plot(cluc)
+# makes compact clusters (artefact of the method)
+
+# c. average linkage -> more neutral in grouping (default method)
+clua <- hclust(dis, "average")
+clua
+plot(clua)
+
+par(mfrow=c(1,3))
+plot(clus)
+plot(cluc)
+plot(clua)
+
+# All these clustering methods are agglomerative
+# They start with combining two most similar sites to each other. 
+# Then they proceed by combining points to points or to groups, or groups to groups.
+
+# range of dissimilarity is the same for all methods
+range(dis)
+
+# function cophenetic() -> finds estimated dissimilarity from a tree for every pair of points
+# Cophenetic correlation measures the similarity between original dissimilarities and dissimilarities estimated from the tree.
+cor(dis, cophenetic(clus)) # 0.6602
+cor(dis, cophenetic(cluc)) # 0.6707
+cor(dis, cophenetic(clua)) # 0.8169 -> avarage linkage is the best performer
+
+
+################# 6.2 Display and interpretation of classes  #################
+
+# The flattening of the clustering happens by cutting the tree at some fusion level so that we get a desired number of clusters.
+# function rect.hclust() -> to visualize the cutting
+# function cutree() -> to make a classification vector with certain number of classes
+
+plot(cluc)
+rect.hclust(cluc, 3) # visualize the cutting
+grp <- cutree(cluc, 3) # classification vector
+# classification vector can be used as any other factor variable.
+
+# inspecting the goodness of community classification
+# see how well it predicts external environmental variables that were not used in clustering.
+boxplot(A1 ~ grp, data = dune.env, notch = T)
+
+# functions lm or aov for formal testing of “significance” of clusters.
+
+# The clustering results can be displayed in ordination diagrams
+ord <- cca(dune)
+plot(ord, display = "sites")
+ordihull(ord, grp, lty = 2, col = "red")
+
+# overlaying classification in ordination can be used as a cross-check
+# Function ordirgl() with its support function orglspider() can be used to inspect classification using dynamic 3D graphics.
+
+# function ordicluster() -> to overlay hclust tree in ordination
+plot(ord, display="sites")
+ordicluster(ord, cluc, col = "blue")
+
+# tree - connected graph with no loops
+# spanning tree - tree connecting all points
+
+# function spantree() -> finding spanning tree
+# line() -> overlay tree onto ordination
+
+mst <- spantree(dis, toolong = 1)
+plot(mst, ord=ord, pch=21, col="red", bg="yellow", type="t")
+# In dissimilarity index, distance = 1 means that there is nothing in common with two sample plots. 
+# Function spantree regards these maximum dissimilarities as missing data, and does not use them in building the tree. 
+# If all points cannot be connected because of these missing values, the result will consist of disconnected spanning trees. 
+# this is known as a ‘forest’.
+
+# if the tree is linear, the ordination might be good
+# curved tree may indicate arc or horseshoe artefacts
+# messy tree a bad ordination or a need of higher number of dimensions.
+
+
+################# 6.3 Classified community tables  #################
+
+# aim of classification often is to make a classified community table.
+
+# general tree class called dendrogram
+# has a function to reorder a tree according to some external variable
+
+# hclust result can be changed into dendrogram with function as.dendrogram()
+# and this can be reorderd with function reorder()
+
+# CA is an ordination method that structures table optimally into a diagonal structure,
+# we can use its first axis to reorder the tree
+wa <- scores(ord, display = "sites", choices = 1)
+den <- as.dendrogram(clua)
+oden <- reorder(den,  wa, mean)
+
+op <- par(mfrow=c(2,1), mar=c(3,5,1,2)+.1)
+plot(den)
+plot(oden)
+par(op)
+# identical trees, only order of leaves changed
+
+# vegemite() -> create compact vegetation tables
+# argument use to arrange the sites (and species if possible)
+# can be: vector, ordination result, hclust or dendrogram
+
+# creating community table
+vegemite(dune, use = oden, zero = "-")
 
 
 
