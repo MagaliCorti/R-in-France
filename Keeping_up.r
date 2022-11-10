@@ -1,6 +1,72 @@
 # KEEP UP WITH R!!
 
 
+############################################## dplyr package ##############################################
+
+library(dplyr)
+
+# creating an example dataset
+data <- data.frame(x1 = 1:6,
+                   x2 = c(1, 2, 2, 3, 1, 2),
+                   x3 = c("F", "B", "C", "E", "A", "D"))
+data
+
+
+###### Example 1: arrange Function 
+
+# ordering data sets according to a certain column of our data
+# sort our data according to the variable x3
+arrange(data, x3)
+
+
+###### Example 2: filter Function 
+
+# extracts rows of our data by a logical condition
+# creates a subset of our original data frame, in which only rows with the value 2 in the variable x2 are retained
+filter(data, x2 == 2)
+
+
+###### Example 3: mutate Function 
+
+# transforms variables into new variables
+# create a new variable x4, which is containing the sums of each row of the variables x1 and x2
+mutate(data, x4 =  x1 + x2)
+
+
+###### Example 4: pull Function 
+
+# extracts certain columns of our data frame and converts them into a vector
+# extracts the variable x2
+pull(data, x2)
+
+
+###### Example 5: rename Function
+
+# changes the name of certain columns
+# change the name of the third column from x3 to new_name
+rename(data, new_name = x3)
+
+
+###### Example 6: sample_n Function 
+
+# randomly samples N cases from our data frame
+# sample three rows of our original data without replacement
+# set seed for reproducibility
+set.seed(765)
+sample_n(data, 3)
+
+
+###### Example 7: select Function
+
+# extracts certain columns from a data frame
+# creates a subset with the columns x2 and x3
+select(data, c(x2, x3))
+
+# https://www.geeksforgeeks.org/dplyr-package-in-r-programming/ 
+
+
+
+
 
 ##########################################################################################
 # Introduction to Coding in R Part 2
