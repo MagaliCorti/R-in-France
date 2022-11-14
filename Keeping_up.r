@@ -347,6 +347,183 @@ dunnTest(cty~drv, data = mpg, method = "bh") # Benjamini-Hochberg method
 # same conclusion
 
 
+############################################## Applied Statistics in R Part 3 ##############################################
+
+####### regression models #######
+
+library(ggplot2)
+library(car)
+
+# load data
+data(mpg)
+
+
+###### linear model #######
+
+# cty fuel economy (response variable) as a function of engine size (predictor variable)
+model1 <- lm(cty~displ, data=mpg)
+summary(model1)
+# Residuals: check if residuals normally distributed 
+# Coefficients: of the model y=ax+b (a slope, b intercept) -> Estimate (Intercepts) = b, displ = a slope
+# for each coeff we have a p-value (significantly different from 0)
+# Multiple R-squared:  0.6376 - coefficient of determination -> 64% of variation in cty can be explained by displaycement
+
+# is that an appropriate model for our data?
+
+# 1. check assumption of homosscedasticity
+residualPlot(model1)
+# dashed line = 0 distance bw residuals (observed data - predicted)
+# residual are curvilinear -> not good fit for nature of the data
+# hp violated -> heteroscedasticity
+
+# 2. check for normal distrib of residuals
+densityPlot(model1$residuals)
+# almost follow a normal distrib, but positive skewed and two pics
+
+# 3. assumption of independence
+# observation displacement of the data in the data frame are independent from one-another
+durbinWatsonTest(model1)
+# there is signifacant level of autocorrelation in the model?
+# p-value = 0, some observation are more correlated with each other than others
+# observation are not independent
+
+# 4. check for linear correlation
+ggplot(mpg, aes(displ, cty)) + 
+  geom_point() +
+  geom_smooth(method = "lm", formula = y~x)
+# not linear correlation
+# negative slope (as we saw in the formula at the beginning)
+# we do not have a uniform distribution of residuals
+# vertical points -> observation are not totally independent from one-another (autocorrelation)
+
+# model1 is terrible
+
+# test if model for hwy fuel economy as a function of cty economy is better 
+answer1 <- lm(hwy~cty, data=mpg)
+summary(answer1)
+# p-value=0.084 says that intercept not significantly different from 0 (but p-value near to 0.05)
+
+# 1. check assumption of homoscedasticity
+residualPlot(answer1) # not homoscedasticy
+
+# 2. check for normal distrib of residuals
+densityPlot(answer1$residuals) # not bad, quite normal distrib, little skewed to both sides
+
+# 3. assumption of independence
+durbinWatsonTest(answer1)
+# data not independent
+
+# 4. check for linear correlation
+ggplot(mpg, aes(cty, hwy)) + 
+  geom_point() +
+  geom_smooth(method = "lm", formula = y~x)
+# quite linear
+# some points are in vertical -> autocorrelation
+
+
+
+###### generalized linear model #######
+
+# new model: cty fuel economy (response variable) as a function of engine size (predictor variable)
+model2 <- glm(cty~displ, family = poisson(link = "log"), data=mpg)
+summary(model2)
+
+# AIC - can be used to compare differents models
+# we do not get R-square value -> use package rsq
+
+install.packages("rsq")
+library(rsq)
+
+# rsq function compute R-square
+rsq(model2)
+
+?glm
+# binomial(link = "logit") -> to make a binomial distrib
+# gaussian(link = "identity") -> same model used for the lm
+# poisson(link = "log") -> as a number very distant from 0 is a normal distribution, but going toward 0 data become very skewed
+
+# plotting glm
+ggplot(mpg, aes(displ, cty)) + 
+  geom_point() +
+  geom_smooth(method = "glm", formula = y~x, method.args = list(family = "poisson"))
+# now model looks like a curving line, better fitting the data
+
+densityPlot(model2$residuals)
+residualPlot(model2) # better -> residuals are flatter (getting closer to 0)
+
+# what about relationship bw displ and hwy?
+answer2 <- glm(hwy~displ, family = poisson(link = "log"), data=mpg)
+summary(answer2)
+rsq(answer2)
+ggplot(mpg, aes(displ, hwy)) + 
+  geom_point() +
+  geom_smooth(method = "glm", formula = y~x, method.args = list(family = "poisson"))
+densityPlot(answer2$residuals)
+residualPlot(answer2) 
+durbinWatsonTest(answer2) # still autocorrelation
+
+
+
+###### generalized linear mixed model #######
+
+library(lme4)
+
+# fixed effects - the ones we are generally interested in
+#                 we want to know how displaycement affects either cty anf hwy
+
+# random effects - creating autocorrelation (variable you want to accont for)
+#                  due to manufacturer of engine
+
+model3 <- glmer(cty~displ+(1|manufacturer), data = mpg, family = poisson(link = "log"))
+# displ = fixed effects
+# + (1|manufacturer) = random effects 
+model3
+# intercept change according to manufacturer (random effects)
+rsq(model3)
+# $model [1] 0.7145693
+# $fixed [1] 0.67642
+# $random [1] 0.03814928
+
+# plotting model3
+ggplot(mpg, aes(displ, cty)) + 
+  geom_point() +
+  geom_smooth(method = "glm", formula = y~x, method.args = list(family = "poisson")) +
+  facet_grid(~manufacturer) # relationship bw displ and cty but for each manufacturer
+
+# random effects -> the rel vary amoung manufacturer?
+
+
+# can you fit a glmn with:
+# fuel type ("fl") as a random effect
+# cty fuel economy as the responsive variable
+# displ as fixed effect
+
+anwer3 <- glmer(cty~displ+(1|fl), data = mpg, family = poisson(link = "log"))
+anwer3
+ggplot(mpg, aes(displ, cty)) + 
+  geom_point() +
+  geom_smooth(method = "glm", formula = y~x, method.args = list(family = "poisson")) +
+  facet_grid(~fl) 
+# there is a lot of non-independence in the observations -> not most appropriate random effect
+
+
+###### generalized additive model #######
+
+library(mgcv)
+
+# additive -> fit the data moving along it (s = smooth)
+model4 <- gam(cty~s(displ), data = mpg)
+summary(model4)
+rsq(model4)
+
+# plotting gam
+ggplot(mpg, aes(displ, cty)) + 
+  geom_point() +
+  geom_smooth(method = "gam", formula = y~s(x))
+# we cannot  interpret the relationship -> no prediction outside data range
+# you need a lot of data to fit it
+
+
 
 
 ##########################################################################################
