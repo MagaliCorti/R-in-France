@@ -347,6 +347,8 @@ dunnTest(cty~drv, data = mpg, method = "bh") # Benjamini-Hochberg method
 # same conclusion
 
 
+
+
 ############################################## Applied Statistics in R Part 3 ##############################################
 
 ####### regression models #######
@@ -522,6 +524,46 @@ ggplot(mpg, aes(displ, cty)) +
   geom_smooth(method = "gam", formula = y~s(x))
 # we cannot  interpret the relationship -> no prediction outside data range
 # you need a lot of data to fit it
+
+
+
+
+############################################## Introduction to Ordination Lecture ##############################################
+
+# Ordination = ordering objects that are characterized by multiple attributes (multivariate objects) in a smaller number of dimentions (two or three)
+# - indirect ord. - indirect gradient analysis or unconstrained ord
+# - direct ord. - direct gradient analysis or constrained ordination
+
+
+###### Principal Component Analysis
+
+# PCA -  reduce the dimensionality of dataset by crating a linear combination of the original variable
+# by fitting an eigenvector through the longest access of a data cloud
+# than goes 90° and fits another one (impo PCA2 should be independent from PCA1)
+# eigenvalue represent proportion of variance explained by the vector (axe)
+# ouput - rotation that allow PCA1 to be x and PCA2 to be y
+
+# if we had 15 variable we'll have 15 PCAs axes
+
+
+###### Non-metric Multi-Dimensional Scaling
+
+# NMDS - work with community data, rather then env data
+# method begins with a raw data matrix represents species (column), by sampling sites (rows)
+# data matrix can be abundance data or presence/absence data
+# from this data matrix dissimilarity indices (distance metrics) are calculated
+# for abundance data most common dissimilarity index is Bray-Curtis Distance
+
+# 1. bf interpretation look at stress value
+# if you have very high stress (S>0.2) you might want to explain your data with one additional dimension
+# if stress<0.1 great representation in 2 dimensional space
+
+# points near to each other similar community composition
+# can overlay environmental variable correlated with community structure
+
+# testing with permanova
+
+
 
 
 
