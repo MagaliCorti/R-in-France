@@ -846,6 +846,122 @@ dev.off()
 
 
 
+############################################## Clustering in R ##############################################
+
+library(vegan)
+library(ade4)
+library(cluster)
+library(RColorBrewer)
+
+# load data
+data("doubs")
+doubs
+fish <- doubs$fish
+View(fish)
+
+# in site 8 no collection of fish -> we decide erase it (other times interesting to mantain)
+fish <- fish[-8,]
+
+# normalize the data (passe from abundance to relative abundance)
+# rel abundance = how  much  of the proportion of the fishes corrected in site one partrain to a spp
+# normalizing rowwise
+fish.norm <- decostand(fish, "normalize")
+
+# calculating Euclidean distances between samples
+# make a matrix of pairwise distances
+fish.ch <- vegdist(fish.norm, "euc")
+
+# add labels to distance objects
+# help in the interpretation of the dendrogram
+attr(fish.ch, "labels") <- rownames(fish)
+
+# compute clusters using Ward's Minimum Variance Clustering
+fish.ward <- hclust(fish.ch, method = "ward.D2") # we can have many differnt methods of clustering
+
+# plotting clustering
+plot(fish.ward, labels=rownames(fish), main="Ward's Minimum Variance Clustering")
+# showing sites names (numbers)
+# low value of height = similar sites
+
+# how do we  interpret how many cluster retain and interpret?
+# can use Silhouette widths -> n of cluster to retain (avarage dissimilarity)
+fish_cluster <- fish.ward
+
+Si <- numeric(nrow(fish))
+for (k in 2:(nrow(fish)-1)) {
+  sil <- silhouette(cutree(fish_cluster, k=k), fish.ch)
+  Si[k] <- summary(sil)$avg.width
+}
+
+k.best <- which.max(Si)
+
+# plotting number of  cluster and silhouette values
+plot(
+  1:nrow(fish),
+  Si,
+  type="h",
+  main="Silhouette-optimal number of clusters",
+  xlab="K  (number of clusters)",
+  ylab="Avarage silhouette width"
+)
+# highlighting best n of cluster according  to silhouette width
+axis(
+  1,
+  k.best,
+  paste("optimim", k.best, sep = "\n"),
+  col="red",
+  font=2,
+  col.axis="red"
+)
+points(k.best,
+       max(Si),
+       pch=16,
+       col="red",
+       cex=1.5
+)
+# 2 clusters is the optimum
+
+# plotting using a heatmap where white colors represent similar sites
+# and sites are ordered by the dendrogram
+
+# first save the hclust object as dendrogram
+dend <- as.dendrogram(fish.ward)
+# plot the heat map
+heatmap(
+  as.matrix(fish.ch),
+  Rowv = dend,
+  symm = T,
+  margin=c(3,3)
+)
+# dendrogram reflected to itself
+# same site confronted = withe small quadrat
+# we see a big quadrat which is light colored (sites inside a same cluster)
+# darcker color = decreasing similarities
+
+# which species are contributing to similarity
+# create weighted avarages of species scores
+or <- vegemite(fish, fish.ward)
+# species are rows and numbers are indication of relative occurence of those sites and points are absences
+
+# plot it in heatmap
+heatmap(
+  t(fish[rev(or$species)]), # transpose fish
+  Rowv = NA,
+  Colv = dend,
+  col=c("white", brewer.pal(5, "Greens")),
+  scale = "n",
+  margin=c(4,4),
+  ylab = "Species (weighted avarage of sites)",
+  xlab = "Sites"
+)
+# useful to understand why sites differ from each other
+# a lot of species are really abundant in the first cluster of sites
+# second cluster with different species
+# final cluster with few species
+# maybe we should interpret 4 clusters instead of 2 as suggested by silhouette optimum
+
+
+
 
 
 ##########################################################################################
