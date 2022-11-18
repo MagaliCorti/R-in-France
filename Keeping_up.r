@@ -566,6 +566,286 @@ ggplot(mpg, aes(displ, cty)) +
 
 
 
+############################################## PCA in R ##############################################
+
+library(vegan)
+library(ggplot2)
+library(ggvegan)
+library(BiodiversityR)
+
+# loading data
+data(mpg)
+# subset data to include columns for displ(3), cty(8) and hwy(9)
+# powerful if we have huge dataframe with a lot of variable
+mpg_pca <- mpg[,c(3,8,9)]
+# run the analysis
+pca1 <- rda(mpg_pca)
+pca1
+# we are running unconstrained analysis ->  all inertia is unconstrained
+# if  we constrained analysis with env variable, we will have part of it constrained
+summary(pca1)
+
+# det how many axes retain for interpretation
+PCAsignificance(pca1)
+#  % > bs%  interesting for  seeing with PCA retain for the analysis
+
+# plotting data in a basic way
+ordiplot(pca1)
+# replaicing points with text
+ordiplot(pca1, type="t")
+# you cannot interpret anymore PC1 onrly in function  on a variable, but you have to interpret all of them together
+
+# run an autoplot (ggplot for PCAs)
+autoplot(pca1, legend.position = "none") +
+  xlab("PC1 (97%)") +
+  ylab("PC2 (2%)") +
+  geom_abline(intercept = 0, slope = 0, linetype="dashed", size=0.8) + # adding coordinated and Origin  -> horizontal line
+  geom_vline(aes(xintercept=0), linetype="dashed", size=0.8) + # vertical line
+  theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.background = element_blank(),
+        axis.line = element_line(color="black"))
+
+# better visualization
+pca_fort <- fortify(pca1, axes = 1:2)
+ggplot() +
+  geom_point(data = subset(pca_fort, Score =="sites"), # points representing site
+             mapping = aes(x = PC1, y = PC2),
+             colour="black",
+             alpha=0.5) + # alpha = transparency
+  geom_segment(data = subset(pca_fort, Score =="species"), # arrows representing species
+               mapping = aes(x = 0, y = 0, xend = PC1, yend = PC2), # setting beginning and ending points of arrows
+               arrow = arrow(length = unit(0.03, "npc"),
+                             type = "closed"),
+               colour = "darkgray",
+               size = 0.8) +
+  geom_text(data = subset(pca_fort, Score =="species"),
+            mapping = aes(label = Label, x = PC1 * 1.1, y = PC2 * 1.1)) +
+  geom_abline(intercept = 0, slope = 0, linetype="dashed", size=0.8, colour="gray") + # adding coordinated and Origin
+  geom_vline(aes(xintercept=0), linetype="dashed", size=0.8,  colour="gray") +
+  xlab("PC1 (97%)") +
+  ylab("PC2 (2%)") +
+  theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.background = element_blank(),
+        axis.line = element_line(color="black"))
+
+
+# exercice with iris dataset
+
+data(iris)
+iris_pca <- iris[,c(1,2,3,4)]
+
+# pca
+pcai <- rda(iris_pca)
+pcai
+summary(pcai)
+PCAsignificance(pcai)
+# PCA1 92% ---> % > bs% = 1.000000 
+# PCA2 5%
+
+# visualizing PCA
+# 1. ordiplot
+ordiplot(pcai)
+# 2. autoplot
+autoplot(pcai, legend.position = "none") +
+  xlab("PC1 (92%)") +
+  ylab("PC2 (5%)") +
+  geom_abline(intercept = 0, slope = 0, linetype="dashed", size=0.8) + # adding coordinated and Origin
+  geom_vline(aes(xintercept=0), linetype="dashed", size=0.8) +
+  theme(panel.grid.major = element_blank(), # erasing backgroud and panels
+        panel.grid.minor = element_blank(),
+        panel.background = element_blank(),
+        axis.line = element_line(color="black"))
+# 3. ggplot 
+# (with color of the points by the Scpecies from iris dataset)
+pca_forti <- fortify(pcai, axes = 1:2)
+ggplot() +
+  geom_point(data = subset(pca_forti, Score =="sites"), # points representing site
+             mapping = aes(x = PC1, y = PC2, colour = iris$Species),
+             alpha=0.5) + # alpha = transparency
+  geom_segment(data = subset(pca_forti, Score =="species"), # arrows representing species
+               mapping = aes(x = 0, y = 0, xend = PC1, yend = PC2), # setting beginning and ending points of arrows
+               arrow = arrow(length = unit(0.03, "npc"),
+                             type = "closed"),
+               colour = "darkgray",
+               size = 0.8) +
+  geom_text(data = subset(pca_forti, Score =="species"),
+            mapping = aes(label = Label, x = PC1 * 1.1, y = PC2 * 1.1)) +
+  geom_abline(intercept = 0, slope = 0, linetype="dashed", size=0.8, colour="gray") + # adding coordinated and Origin
+  geom_vline(aes(xintercept=0), linetype="dashed", size=0.8,  colour="gray") +
+  xlab("PC1 (92%)") +
+  ylab("PC2 (5%)") +
+  theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.background = element_blank(),
+        axis.line = element_line(color="black"))
+
+
+
+
+############################################## NMDS in R ##############################################
+
+library(vegan)
+library(ggplot2)
+library(ggvegan)
+library(ggpubr)
+
+# community data or morphometric data, data mesured on the same scale
+
+# loading data
+data("mite")
+data("mite.env")
+
+# can make NMDS both constrained or unconstrained
+
+# transform mite abundance data
+# hellinger when few really  abundant spp and many rare spp, transform make rare and abundant spp weigth less in analysis
+mite.hel <- decostand(mite, method = "hellinger")
+
+# nmds
+nmds1 <- metaMDS(mite.hel, autotransform = F) # we already transformed data
+# by default autotrasform = T
+# in the first run compute stress
+# computing euclidean distance and regressing to the  bray-curtis distance (ecological distance)
+# if they match highly stress will be lower
+# if solution not reached or non convergent 
+# - can put highset max run inside function 
+# - or increase number of dimension
+
+# basic plotting
+ordiplot(nmds1)
+# points = sampling  sites
+# crosses = taxonomic units (species)
+ordiplot(nmds1, type = "t")
+
+# plotting with autoplot
+autoplot(nmds1)
+
+# plotting with ggplot
+fort <- fortify(nmds1)
+ggplot() +
+  geom_point(data = subset(fort, Score =="sites"),
+             mapping = aes(x=NMDS1, y=NMDS2),
+             colour="black",
+             alpha=0.5) +
+  geom_segment(data = subset(fort, Score =="species"), # species are normally represented as vectors
+               mapping = aes(x = 0, y = 0, xend = NMDS1, yend = NMDS2), # setting beginning and ending points of arrows
+               arrow = arrow(length = unit(0.015, "npc"),
+                             type = "closed"),
+               colour = "darkgray",
+               size = 0.8) +
+  geom_text(data = subset(fort, Score =="species"),
+            mapping = aes(label = Label, x = NMDS1 * 1.1, y = NMDS2 * 1.1)) +
+  geom_abline(intercept = 0, slope = 0, linetype="dashed", size=0.8, colour="gray") + # adding coordinated and Origin
+  geom_vline(aes(xintercept=0), linetype="dashed", size=0.8,  colour="gray") +
+  theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.background = element_blank(),
+        axis.line = element_line(color="black"))
+
+# if I wanted points over arrows shoul put before geom_segment and after geom_point
+
+# interpretation
+# we want to interpret the axes 
+# points positive along the first axis have high abundance of certain spp
+# vs points negative have high abundance of other spp
+
+# points near to each other have similar assemblages
+
+# impo reporting stress value
+
+# make a two panel plot to reduce complexity
+p1 <- ggplot() +
+  geom_point(data = subset(fort, Score =="sites"),
+             mapping = aes(x=NMDS1, y=NMDS2),
+             colour="black",
+             alpha=0.5) +
+  geom_segment(data = subset(fort, Score =="species"), # species are normally represented as vectors
+               mapping = aes(x = 0, y = 0, xend = NMDS1, yend = NMDS2), # setting beginning and ending points of arrows
+               arrow = arrow(length = unit(0.015, "npc"),
+                             type = "closed"),
+               colour = "darkgray",
+               size = 0,
+               alpha=0) +
+  #geom_text(data = subset(fort, Score =="species"),
+            #mapping = aes(label = Label, x = NMDS1 * 1.1, y = NMDS2 * 1.1)) +
+  geom_abline(intercept = 0, slope = 0, linetype="dashed", size=0.8, colour="gray") + # adding coordinated and Origin
+  geom_vline(aes(xintercept=0), linetype="dashed", size=0.8,  colour="gray") +
+  theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.background = element_blank(),
+        axis.line = element_line(color="black"))
+
+p2 <- ggplot() +
+  geom_point(data = subset(fort, Score =="sites"),
+             mapping = aes(x=NMDS1, y=NMDS2),
+             colour="black",
+             alpha=0) +
+  geom_segment(data = subset(fort, Score =="species"), # species are normally represented as vectors
+               mapping = aes(x = 0, y = 0, xend = NMDS1, yend = NMDS2), # setting beginning and ending points of arrows
+               arrow = arrow(length = unit(0.015, "npc"),
+                             type = "closed"),
+               colour = "darkgray",
+               size=0.8) +
+  geom_text(data = subset(fort, Score =="species"),
+            mapping = aes(label = Label, x = NMDS1 * 1.1, y = NMDS2 * 1.1)) +
+  geom_abline(intercept = 0, slope = 0, linetype="dashed", size=0.8, colour="gray") + # adding coordinated and Origin
+  geom_vline(aes(xintercept=0), linetype="dashed", size=0.8,  colour="gray") +
+  theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.background = element_blank(),
+        axis.line = element_line(color="black"))
+
+ggarrange(p1,p2, ncol=1)
+
+
+##### Test differences in mite community composition across shrub levels #####
+
+summary(mite.env)
+# we are interested in shrub level (categorical)
+# when you run a permute multivariate analysis of variance (permanova)
+#  one assumption is that you have balance between your different classes
+# in substrate i have a class of 25, one of 1, three of 3
+# vs in shrub i have balanced classes (19, 26, 25)
+
+adonis2(mite~Shrub, data=mite.env)
+# look for diff in comm composition, diff of abundances of species for the  shrub variiable
+# 3 levels of shrubs -> 2 degrees of freedonm
+# p-value signif -> there is a signif diff in abundances of mite community for diff shrub level
+# R2 0.21244 -> we explained 21% of the variation of mite community structure
+
+# plot 1 but in function of shrub we have diff colors
+p3 <- ggplot() +
+  geom_point(data = subset(fort, Score =="sites"),
+             mapping = aes(x=NMDS1, y=NMDS2, colour=mite.env$Shrub),
+             alpha=0.5) +
+  geom_segment(data = subset(fort, Score =="species"), # species are normally represented as vectors
+               mapping = aes(x = 0, y = 0, xend = NMDS1, yend = NMDS2), # setting beginning and ending points of arrows
+               arrow = arrow(length = unit(0.015, "npc"),
+                             type = "closed"),
+               colour = "darkgray",
+               size = 0,
+               alpha=0) +
+  #geom_text(data = subset(fort, Score =="species"),
+  #mapping = aes(label = Label, x = NMDS1 * 1.1, y = NMDS2 * 1.1)) +
+  geom_abline(intercept = 0, slope = 0, linetype="dashed", size=0.8, colour="gray") + # adding coordinated and Origin
+  geom_vline(aes(xintercept=0), linetype="dashed", size=0.8,  colour="gray") +
+  theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.background = element_blank(),
+        axis.line = element_line(color="black"))
+
+# exporting  figure
+jpeg("mite_NMDS.jpg", width = 150, height = 250, units = "mm", res = 600)
+ggarrange(p3, p2, ncol=1 )
+dev.off()
+
+
+# ex with dune dataset -> nmds across land use
+
+
+
 
 
 ##########################################################################################
