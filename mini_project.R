@@ -17,6 +17,8 @@ library(rsq)
 library(MASS)
 
 
+
+
 ########## data loading ##########
 
 CTM <- read.csv("Data/PARLAC_CTM.csv")
@@ -27,7 +29,16 @@ pigments <- subset(pigments[1:54,])
 LC_Fit <- read.table("Data/PARLAC_LC_Fit.txt", header=T)
 
 
+
+
 ########## data structuration ##########
+
+
+# converting  Treatment as factor
+pigments$Treatment <- factor(pigments$Treatment, levels = c("C", "M", "H"))
+CTM$Treatment <- factor(CTM$Treatment, levels = c("C", "M", "H"))
+LC_Fit$Treatment <- factor(LC_Fit$Treatment, levels = c("C", "M", "H"))
+
 
 ##### LC_Fit
 
@@ -38,6 +49,7 @@ LC_Fit <- filter(LC_Fit, Protocol == "Abs")
 LC_Fit_alpha <- filter(LC_Fit, Param == "alpha")
 LC_Fit_ETRm <- filter(LC_Fit, Param == "ETRmax")
 LC_Fit_Ik <- filter(LC_Fit, Param == "Ik")
+
 
 ##### pigments
 
@@ -97,9 +109,23 @@ colnames(CTM) <- c("Name","Date" , "Sampling", "Treatment", "Replicate","Temp", 
 
 
 
-########## PCA ##########
+# ratio ETRGreen/Chla (assumption green ~ chlorophylla)
+dfanova <- dfanova %>%
+  mutate(ETRrelG=ETRGreen/Chla)
+# ratio ETRGreen/Carot (assumption brown ~ carotenoids)
+dfanova <- dfanova %>%
+  mutate(ETRrelB=ETRBrown/Carot)
 
-#### pigments
+
+
+
+
+
+
+#################### PCA ####################
+
+
+######## pigments ########
 
 # assigning to rows the name of the column Name
 pigments <- as.data.frame(pigments)
@@ -117,27 +143,27 @@ PCAsignificance(pigments_pca)
 ordiplot(pigments_pca, type = "t")
 
 # ggplot
-pig_fort <- fortify(pigments_pca, axes = 1:2)
-ggplot() +
-  geom_point(data = subset(pig_fort, Score =="sites"), # points representing site
-             mapping = aes(x = PC1, y = PC2, colour = CTM$Treatment),
-             alpha=0.5) + # alpha = transparency
-  geom_segment(data = subset(pig_fort, Score =="species"), # arrows representing species
-               mapping = aes(x = 0, y = 0, xend = PC1, yend = PC2), # setting beginning and ending points of arrows
-               arrow = arrow(length = unit(0.03, "npc"),
-                             type = "closed"),
-               colour = "darkgray",
-               size = 0.8) +
-  geom_text(data = subset(pig_fort, Score =="species"),
-            mapping = aes(label = Label, x = PC1 * 1.1, y = PC2 * 1.1)) +
-  geom_abline(intercept = 0, slope = 0, linetype="dashed", size=0.8, colour="gray") + # adding coordinated and Origin
-  geom_vline(aes(xintercept=0), linetype="dashed", size=0.8,  colour="gray") +
-  xlab("PC1 (91%)") +
-  ylab("PC2 (9%)") +
-  theme(panel.grid.major = element_blank(),
-        panel.grid.minor = element_blank(),
-        panel.background = element_blank(),
-        axis.line = element_line(color="black"))
+#pig_fort <- fortify(pigments_pca, axes = 1:2)
+#ggplot() +
+#  geom_point(data = subset(pig_fort, Score =="sites"), # points representing site
+#             mapping = aes(x = PC1, y = PC2, colour = CTM$Treatment),
+#             alpha=0.5) + # alpha = transparency
+#  geom_segment(data = subset(pig_fort, Score =="species"), # arrows representing species
+#               mapping = aes(x = 0, y = 0, xend = PC1, yend = PC2), # setting beginning and ending points of arrows
+#               arrow = arrow(length = unit(0.03, "npc"),
+#                             type = "closed"),
+#               colour = "darkgray",
+#               size = 0.8) +
+#  geom_text(data = subset(pig_fort, Score =="species"),
+#            mapping = aes(label = Label, x = PC1 * 1.1, y = PC2 * 1.1)) +
+#  geom_abline(intercept = 0, slope = 0, linetype="dashed", size=0.8, colour="gray") + # adding coordinated and Origin
+#  geom_vline(aes(xintercept=0), linetype="dashed", size=0.8,  colour="gray") +
+#  xlab("PC1 (91%)") +
+#  ylab("PC2 (9%)") +
+#  theme(panel.grid.major = element_blank(),
+#        panel.grid.minor = element_blank(),
+#        panel.background = element_blank(),
+#        axis.line = element_line(color="black"))
 
 # fitting env variables 
 pig_fit <- envfit(pigments_pca, CTM[6:11])
@@ -146,37 +172,17 @@ pig_fit
 scores(pig_fit, "vectors")
 
 # adding fitted vectors to an ordination using plot command
-plot(pigments_pca, display = "sites")
+# plot(pigments_pca, display = "sites")
+plot(pigments_pca)
 plot(pig_fit)
 
 
 
-# sqrt transformation
-pca2 <- rda(sqrt(pigments[,c(7:8)]))
-pig_fit <- envfit(pca2, CTM[6:11])
-pig_fit
-# log transformation
-pca2 <- rda(log(pigments[,c(7:8)]))
-pig_fit <- envfit(pca2, CTM[6:11])
-pig_fit
-# log2 transformation
-pca2 <- rda(log2(pigments[,c(7:8)]))
-pig_fit <- envfit(pca2, CTM[6:11])
-pig_fit
-# log10 transformation
-pca2 <- rda(log10(pigments[,c(7:8)]))
-pig_fit <- envfit(pca2, CTM[6:11])
-pig_fit
+
+######## PAM variables ########
 
 
-
-
-
-#### variable PAM
-
-
-
-### alpha ~ CTM variables
+#### alpha ~ CTM variables ####
 
 # assigning to rows the name of the column Name
 rownames(LC_Fit_alpha) <- LC_Fit_alpha$Name
@@ -212,11 +218,12 @@ a_fit <- envfit(alpha_pca, CTM2[,6:11], permu=999)
 a_fit
 scores(a_fit, "vectors")
 # adding fitted vectors to an ordination using plot command
-plot(alpha_pca, display = "sites")
+plot(alpha_pca)
 plot(a_fit)
 
 
-### alpha ~ pigments variables
+
+#### alpha ~ pigments variables ####
 
 pigments2 <- pigments
 al_pca <- LC_Fit_alpha[,8:9]
@@ -233,15 +240,15 @@ a_fitp <- envfit(alpha_pca, pigments2[,7:8], permu=999)
 a_fitp
 scores(a_fitp, "vectors")
 # adding fitted vectors to an ordination using plot command
-plot(alpha_pca, display = "sites")
+plot(alpha_pca)
 plot(a_fitp)
 
 
-### ETRmax ~ CTM variables
+
+#### ETRmax ~ CTM variables ####
 
 # assigning to rows the name of the column Name
 rownames(LC_Fit_ETRm) <- LC_Fit_ETRm$Name
-
 
 # removing NAs
 
@@ -269,11 +276,12 @@ e_fit <- envfit(ETRm_pca, CTM2[,6:11], permu=999)
 e_fit
 scores(e_fit, "vectors")
 # adding fitted vectors to an ordination using plot command
-plot(ETRm_pca, display = "sites")
+plot(ETRm_pca)
 plot(e_fit)
 
 
-### ETRmax ~ pigments variables
+
+#### ETRmax ~ pigments variables ####
 
 pigments2 <- pigments
 al_pca <- LC_Fit_ETRm[,8:9]
@@ -290,16 +298,15 @@ e_fitp <- envfit(ETRm_pca, pigments2[,7:8], permu=999)
 e_fitp
 scores(e_fitp, "vectors")
 # adding fitted vectors to an ordination using plot command
-plot(ETRm_pca, display = "sites")
+plot(ETRm_pca)
 plot(e_fitp)
 
 
 
-### Ik ~ CTM variables
+#### Ik ~ CTM variables ####
 
 # assigning to rows the name of the column Name
 rownames(LC_Fit_Ik) <- LC_Fit_Ik$Name
-
 
 # removing NAs
 
@@ -327,11 +334,12 @@ i_fit <- envfit(Ik_pca, CTM2[,6:11], permu=999)
 i_fit
 scores(i_fit, "vectors")
 # adding fitted vectors to an ordination using plot command
-plot(Ik_pca, display = "sites")
+plot(Ik_pca)
 plot(i_fit)
 
 
-### Ik ~ pigments variables
+
+#### Ik ~ pigments variables ####
 
 pigments2 <- pigments
 al_pca <- LC_Fit_Ik[,8:9]
@@ -348,39 +356,123 @@ i_fitp <- envfit(Ik_pca, pigments2[,7:8], permu=999)
 i_fitp
 scores(i_fitp, "vectors")
 # adding fitted vectors to an ordination using plot command
-plot(Ik_pca, display = "sites")
+plot(Ik_pca)
 plot(i_fitp)
 
 
 
 
+#################### ANOVA ####################
 
 
-########## NMDS ##########
+# preparing single table with env var, pigments data, and PAM
+dfanova <- cbind(CTM, pigments[,c(7,8)])
+LC_Fit_alpha <- LC_Fit_alpha %>%
+  rename(alphaGreen=Green, alphaBrown=Brown)
+LC_Fit_ETRm <- LC_Fit_ETRm %>%
+  rename(ETRGreen=Green, ETRBrown=Brown)
+LC_Fit_Ik <- LC_Fit_Ik %>%
+  rename(IkGreen=Green, IkBrown=Brown)
+dfanova <- cbind(dfanova, LC_Fit_alpha[, c(8,9)])
+dfanova <- cbind(dfanova, LC_Fit_ETRm[, c(8,9)])
+dfanova <- cbind(dfanova, LC_Fit_Ik[, c(8,9)])
+
+
+
+
+##### Treatment effect on env, pigm and PAM variables #####
+
+# ANOVA LOOP 
+# With_TukeyHSD
+for(i in 6:19){
+  ID <- colnames(dfanova[i])
+  aov <- summary(aov(dfanova[[i]]~dfanova[[4]]))
+  tk <- TukeyHSD(aov(dfanova[[i]]~dfanova[[4]]))
+  print(ID)
+  print(aov)
+  print(tk)
+}
+
+# anova without S1
+dfanova1 <- filter(dfanova, Sampling!="S1")
+for(i in 6:19){
+  ID <- colnames(dfanova1[i])
+  aov <- summary(aov(dfanova1[[i]]~dfanova1[[4]]))
+  tk <- TukeyHSD(aov(dfanova1[[i]]~dfanova1[[4]]))
+  print(ID)
+  print(aov)
+  print(tk)
+}
+
+
+
+##### Sampling effect on env, pigm and PAM variables #####
+
+for(i in 6:19){
+  ID <- colnames(dfanova[i])
+  aov <- summary(aov(dfanova[[i]]~dfanova[[3]]))
+  tk <- TukeyHSD(aov(dfanova[[i]]~dfanova[[3]]))
+  print(ID)
+  print(aov)
+  print(tk)
+}
+# anova without S1
+dfanova1 <- filter(dfanova, Sampling!="S1")
+for(i in 6:19){
+  ID <- colnames(dfanova1[i])
+  aov <- summary(aov(dfanova1[[i]]~dfanova1[[3]]))
+  tk <- TukeyHSD(aov(dfanova1[[i]]~dfanova1[[3]]))
+  print(ID)
+  print(aov)
+  print(tk)
+}
+
+
+##### interaction Sampling*Treatment effect on env, pigm and PAM variables #####
+# only Coef_P significant
+
+for(i in 6:19){
+  ID <- colnames(dfanova[i])
+  aov <- summary(aov(dfanova[[i]]~dfanova[[3]]*dfanova[[4]]))
+  tk <- TukeyHSD(aov(dfanova[[i]]~dfanova[[3]]*dfanova[[4]]))
+  print(ID)
+  print(aov)
+  #print(tk)
+}
+tk <- TukeyHSD(aov(dfanova[[6]]~dfanova[[3]]*dfanova[[4]]))
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#################### NMDS ####################
 
 # running nmds
 nmds1 <- metaMDS(pigments[,c(7:8)], autotransform = T) 
 nmds1
-
 # plotting
 ordiplot(nmds1, type = "t")
-
 # fitting env variables 
 pig_fit2 <- envfit(nmds1, CTM[6:11])
 pig_fit2
-
 scores(pig_fit2, "vectors")
-
 # adding fitted vectors to an ordination using plot command
 plot(nmds1, display = "sites")
 plot(pig_fit2)
-
-
 adonis2(pigments[,c(7:8)] ~ Temp + Cond + Turb + O2_sat + DO.mg + Coef_P, data=CTM)
 
 
-
-########## Constrained ordination ##########
+#################### Constrained ordination ####################
 
 # Redundancy analysis
 # using model formula:  community_data ~ equation_for_constraints, dataset_contraints
@@ -388,100 +480,37 @@ rda1 <- rda(pigments[,c(7:8)] ~ Temp + Cond + Turb + O2_sat + DO.mg + Coef_P, CT
 rda1
 # plotting  results
 plot(rda1)
-
 anova(rda1)
 
 
 
 
 
-########## data visualization ##########
-
-# converting  Treatmint as factor
-pigments$Treatment <- factor(pigments$Treatment, levels = c("C", "M", "H"))
-CTM$Treatment <- factor(CTM$Treatment, levels = c("C", "M", "H"))
-LC_Fit$Treatment <- factor(LC_Fit$Treatment, levels = c("C", "M", "H"))
-
-# plotting Chla
-ggplot(pigments, aes(y=Chla, x=Sampling, fill=Treatment)) +
-  geom_boxplot()
-
-# plotting Cartoneoids
-ggplot(pigments, aes(y=Carot, x=Sampling, fill=Treatment)) +
-  geom_boxplot()
-
-# env conditions 
-CTM %>%
-  pivot_longer(.,Temp:Coef_P, names_to="env", values_to = "val") %>%
-  ggplot() +
-  geom_boxplot(aes(x=Sampling, y=val, fill=Treatment)) +
-  facet_wrap(~ env, scales = "free_y")
-
-# creating single table with env var and pigments data
-dfanova <- cbind(CTM, pigments[,c(7,8)])
-
-# Chla en function des variable env
-ggplot(dfanova, aes(y=Chla, x=Temp)) + 
-  geom_point() 
-ggplot(dfanova, aes(y=Chla, x=Cond)) + 
-  geom_point() 
-ggplot(dfanova, aes(y=Chla, x=Turb)) + 
-  geom_point() 
-ggplot(dfanova, aes(y=Chla, x=O2_sat)) + 
-  geom_point() 
-ggplot(dfanova, aes(y=Chla, x=DO.mg)) + 
-  geom_point() 
-ggplot(dfanova, aes(y=Chla, x=Coef_P)) + 
-  geom_point() 
-
-# Carot en function des variable env
-ggplot(dfanova, aes(y=Carot, x=Temp)) + 
-  geom_point() 
-ggplot(dfanova, aes(y=Carot, x=Cond)) + 
-  geom_point() 
-ggplot(dfanova, aes(y=Carot, x=Turb)) + 
-  geom_point() 
-ggplot(dfanova, aes(y=Carot, x=O2_sat)) + 
-  geom_point() 
-ggplot(dfanova, aes(y=Carot, x=DO.mg)) + 
-  geom_point() 
-ggplot(dfanova, aes(y=Carot, x=Coef_P)) + 
-  geom_point() 
-
-
-
-########## ANOVA ##########
+#################### Try ####################
 
 # Effect of treatment on Chla concentration
 ggplot(pigments, aes(y=Chla, x=Replicate, fill=Treatment)) + 
   geom_boxplot() 
-
 # mixed linear model
 lmm1 <- lmer(data=pigments, Chla~Treatment + (1|Replicate))
 summary(lmm1)
 rsq(lmm1)
 anova(lmm1) 
-
 lm1 <- lm(data = pigments, Chla~Treatment)
 lm1
 summary(lm1)
 # anova
 (aov1 <- aov(lm1))
 TukeyHSD(aov1)
-
 lm3 <- lm(data = pigments, Chla~Sampling)
 lm3
 summary(lm3)
 # anova
 (aov3 <- anova(lm3))
 
-
-
 # Effect of treatment on Carotenoids concentration
 ggplot(pigments, aes(y=Carot, x=Replicate, fill=Treatment)) + 
   geom_boxplot() 
-
-
 
 # mixed linear model
 lmm2 <- lmer(data=pigments, Carot~Treatment + (1|Replicate))
@@ -489,11 +518,8 @@ summary(lmm2)
 rsq(lmm2)
 anova(lmm2) 
 plot(lmm2)
-
-
 hist(Carot)
 hist(pigments$Chla)
-
 
 ### linear model 
 lm2 <- lm(data = pigments, Carot~Treatment+Sampling)
@@ -505,40 +531,191 @@ summary(lm2)
 hist(resid(lm2), main="", xlab="", breaks = 20) 
 shapiro.test(resid(lm2))
 
-
-
-
 # Effect of environmental variables on Chla concentration
-
 lmm3 <- lmer(data=dfanova, Chla ~ Temp + Cond + Turb + O2_sat + DO.mg + Coef_P + (1|Replicate))
 summary(lmm3)
 rsq(lmm3)
 anova(lmm3) 
 plot(lmm3)
-
 # log trasf
 lmm3 <- lmer(data=dfanova, log(Chla) ~ Temp + Cond + Turb + O2_sat + DO.mg + Coef_P + (1|Replicate))
 anova(lmm3) 
-
 # log trasf
 lmm3 <- lmer(data=dfanova, sqrt(Chla) ~ Temp + Cond + Turb + O2_sat + DO.mg + Coef_P + (1|Replicate))
 anova(lmm3) 
-
 glm1 <- glmer(Chla ~ Temp + Cond + Turb + O2_sat + DO.mg + Coef_P +(1|Replicate), family = "poisson", data = dfanova)
 glm1
 glmQP1 <- glmmPQL(Chla ~ Temp + Cond + Turb + O2_sat + DO.mg + Coef_P, random= ~ 1|Replicate, family="quasipoisson", data=dfanova)
 glmQP1
 Anova(glmQP1)
 
-
-
 # Effect of environmental variables on Carot concentration
-
 lmm4 <- lmer(data=dfanova, Carot ~ Temp + Cond + Turb + O2_sat + DO.mg + Coef_P + (1|Replicate))
 summary(lmm4)
 rsq(lmm4)
 anova(lmm4) 
 plot(lmm4)
+
+
+
+# MINI PROJECT ECOMONT 2022
+
+
+########## loading packages ##########
+
+library(readxl)
+library(dplyr)
+library(ggplot2)
+library(tidyverse)
+library(vegan)
+library(ggvegan)
+library(BiodiversityR)
+library(car)
+library(lmerTest)
+library(lme4)
+library(rsq)
+library(MASS)
+library(ggvegan)
+library(ggpubr)
+library(reshape2)
+
+
+
+########## data visualization ##########
+
+# plotting Chla
+ggplot(pigments, aes(y=Chla, x=Sampling, fill=Treatment)) +
+  geom_boxplot()
+# plotting Cartoneoids
+ggplot(pigments, aes(y=Carot, x=Sampling, fill=Treatment)) +
+  geom_boxplot()
+
+
+# pigments
+pigments %>%
+  pivot_longer(.,Chla:Carot, names_to="Pigment", values_to = "value") %>%
+  ggplot() +
+  geom_boxplot(aes(x=Sampling, y=value, fill=Treatment)) +
+  facet_wrap(~ Pigment, scales = "free_y")
+
+
+# env conditions 
+CTM %>%
+  pivot_longer(.,Temp:Coef_P, names_to="env", values_to = "val") %>%
+  ggplot() +
+  geom_boxplot(aes(x=Sampling, y=val, fill=Treatment)) +
+  facet_wrap(~ env, scales = "free_y")
+
+# transforming all column names in variable and values in value
+melt2 <- melt(dfanova[,-c(1,2)], id=c("Sampling", "Treatment", "Replicate", "Chla", "Carot"))
+head(melt2)
+# relationship bw pigments and env variables
+ggplot(melt2, aes(x=value, y=Chla, col=Treatment)) +
+  geom_point() +
+  facet_grid(~variable, scales = "free")
+ggplot(melt2, aes(x=value, y=Carot, col=Treatment)) +
+  geom_point() +
+  facet_grid(~variable, scales = "free")
+
+
+# Chla en function des variable env
+ggplot(dfanova, aes(y=Chla, x=Temp, col=Treatment)) + 
+  geom_point() 
+ggplot(dfanova, aes(y=Chla, x=Temp)) + 
+  geom_point() +
+  facet_grid(~Treatment)
+
+ggplot(dfanova, aes(y=Chla, x=Cond, col=Treatment)) + 
+  geom_point() 
+ggplot(dfanova, aes(y=Chla, x=Cond)) + 
+  geom_point() +
+  facet_grid(~Treatment)
+
+ggplot(dfanova, aes(y=Chla, x=Turb, col=Treatment)) + 
+  geom_point() 
+ggplot(dfanova, aes(y=Chla, x=Turb)) + 
+  geom_point() +
+  facet_grid(~Treatment)
+
+ggplot(dfanova, aes(y=Chla, x=O2_sat, col=Treatment)) + 
+  geom_point()
+ggplot(dfanova, aes(y=Chla, x=O2_sat)) + 
+  geom_point() +
+  facet_grid(~Treatment)
+
+ggplot(dfanova, aes(y=Chla, x=DO.mg, col=Treatment)) + 
+  geom_point() 
+ggplot(dfanova, aes(y=Chla, x=DO.mg)) + 
+  geom_point() +
+  facet_grid(~Treatment)
+
+ggplot(dfanova, aes(y=Chla, x=Coef_P, col=Treatment)) + 
+  geom_point()
+ggplot(dfanova, aes(y=Chla, x=Coef_P)) + 
+  geom_point() +
+  facet_grid(~Treatment)
+
+# Carot en function des variable env
+ggplot(dfanova, aes(y=Carot, x=Temp, col=Treatment)) + 
+  geom_point() 
+ggplot(dfanova, aes(y=Carot, x=Temp)) + 
+  geom_point() +
+  facet_grid(~Treatment)
+
+ggplot(dfanova, aes(y=Carot, x=Cond, col=Treatment)) + 
+  geom_point() 
+ggplot(dfanova, aes(y=Carot, x=Cond)) + 
+  geom_point() +
+  facet_grid(~Treatment)
+
+ggplot(dfanova, aes(y=Carot, x=Turb, col=Treatment)) + 
+  geom_point() 
+ggplot(dfanova, aes(y=Carot, x=Turb)) + 
+  geom_point() +
+  facet_grid(~Treatment)
+
+ggplot(dfanova, aes(y=Carot, x=O2_sat, col=Treatment)) + 
+  geom_point()
+ggplot(dfanova, aes(y=Carot, x=O2_sat)) + 
+  geom_point() +
+  facet_grid(~Treatment)
+
+ggplot(dfanova, aes(y=Carot, x=DO.mg, col=Treatment)) + 
+  geom_point() 
+ggplot(dfanova, aes(y=Carot, x=DO.mg)) + 
+  geom_point() +
+  facet_grid(~Treatment)
+
+ggplot(dfanova, aes(y=Carot, x=Coef_P, col=Treatment)) + 
+  geom_point()
+ggplot(dfanova, aes(y=Carot, x=Coef_P)) + 
+  geom_point() +
+  facet_grid(~Treatment)
+
+
+
+# PAM parameters
+# transforming all column names in variable and values in value
+Melt <- melt(LC_Fit[,-c(5,7,10:15)], id=c("Name", "Sampling", "Treatment", "Replicate", "Param"))
+head(Melt)
+ggplot(Melt, aes(x=Sampling, y=value, fill=Treatment)) +
+  geom_boxplot() +
+  facet_grid(Param~variable, scales = "free")
+
+
+# plotting rartio ETR/biomas across time
+ggplot(dfanova, aes(y=ETRrelG, x=Sampling, fill=Treatment)) +
+  geom_boxplot()
+# ETR  normalisée par la biomasse -> algue Green  augmente leur performance (ETR augmente)
+ggplot(dfanova, aes(y=ETRrelB, x=Sampling, fill=Treatment)) +
+  geom_boxplot()
+# ETR  normalisée par la biomasse -> algue Brune  augmente leur performance (ETR augmente)
+
+
+
+
+
+
 
 
 
